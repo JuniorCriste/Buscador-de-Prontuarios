@@ -116,20 +116,27 @@
             font-weight: 600;
         }
 
-        .data-table { 
+       .data-table { 
             width: 100%; 
             border-collapse: collapse; 
             margin-top: 15px; 
-            table-layout: fixed;
+            /* REMOVIDO: table-layout: fixed; */
+            /* Isso permite que a tabela se ajuste ao conteúdo */
         }
         .data-table th, .data-table td { 
             border: 1px solid #e9ecef; 
             padding: 12px 15px; 
             text-align: left; 
             font-size: 0.70rem;
+            
+            /* NOVAS REGRAS PARA LARGURA E QUEBRA DE TEXTO */
+            width: auto; /* Permite que a largura se ajuste ao conteúdo */
+            max-width: 300px; /* Limita a largura máxima da coluna */
+            white-space: normal; /* Permite a quebra de linha (wrap) se o texto for muito longo */
+            word-wrap: break-word; /* Ajuda a quebrar palavras longas */
+            
             overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            /* REMOVIDO: text-overflow: ellipsis; e white-space: nowrap; para permitir quebra */
         }
         .data-table th { 
             background-color: var(--primary-color);
@@ -137,6 +144,7 @@
             font-weight: 600;
             text-transform: uppercase;
         }
+        /* ... (restante do CSS permanece igual) ... */
         .data-table tr:nth-child(even) {
             background-color: #f8f9fa; 
         }
@@ -201,8 +209,9 @@
         
         // 🎯 KEY_MAP: Mapeia cabeçalhos com acentos ou variações para uma chave padronizada no JS.
         const KEY_MAP = {
-            'Certidão de Nascimento': 'CertidaoDeNascimento', 
-            'Última vez nesta Escola': 'UltimaVezNestaEscola'
+            
+            'Última vez nesta Escola': 'UltimaVezNestaEscola',
+            'certidão de nascimento': 'CertidaoNascimento' 
         };
 
         // 🛠️ FUNÇÃO DE FORMATAÇÃO DE DATA 🛠️
@@ -224,7 +233,7 @@
                     return XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
                 }
             }
-            // Retorna o valor original para strings (como "Com certidão") ou datas já formatadas
+        
             return String(cellValue) || '';
         }
         
@@ -268,6 +277,9 @@
                                 // 2. Padroniza chaves de Caixa
                                 } else if (lowerHeader.includes('caixa') || lowerHeader.includes('nº na caixa')) {
                                     key = 'Caixa'; 
+                                // 🎯 NOVO: Padroniza Certidão
+                                } else if (lowerHeader.includes('certidão') || lowerHeader.includes('certidao')) {
+                                    key = 'CertidaoNascimento';
                                 }
                                 
                                 obj[key] = cellValue;
@@ -347,11 +359,12 @@
                     { key: 'Caixa', title: 'Nº na Caixa' },
                     { key: 'Nome', title: 'Nome' },
                     { key: 'Nascimento', title: 'Nascimento' },
+                    // 🎯 NOVA COLUNA AQUI
+                    { key: 'CertidaoNascimento', title: 'Certidão de Nascimento' }, 
                     { key: 'Série/Ano', title: 'Série/Ano' },
                     { key: 'Modalidade', title: 'Modalidade' },
                     { key: 'Filiação 1', title: 'Filiação 1' },
                     { key: 'Última vez nesta Escola', title: 'Última vez nesta Escola' }, // CHAVE PADRONIZADA
-                    { key: 'Certidão de Nascimento', title: 'Certidão de Nascimento' }, // CHAVE PADRONIZADA
                     { key: 'Histórico', title: 'Histórico' }
                 ];
 
@@ -372,7 +385,7 @@
                             value = formatCellValue(value, header.key);
                         } 
                         
-                        // Para CertidaoDeNascimento e outros campos de texto, apenas exibe o valor cru.
+                        // Certidão de Nascimento é exibido como string.
                         
                         tableHTML += `<td>${String(value) || ''}</td>`;
                     });
