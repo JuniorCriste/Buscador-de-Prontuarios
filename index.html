@@ -25,12 +25,10 @@
             padding: 20px; 
             display: flex;
             justify-content: center;
-            min-height: 100vh;
         }
 
         .container {
-            width: 100%;
-            max-width: 900px;
+            width: 90%;
             background-color: white;
             padding: 30px;
             border-radius: 10px;
@@ -201,12 +199,10 @@
         const SUCCESS_COLOR = '#28a745';
         const ERROR_COLOR = '#dc3545';
         
-        // 🎯 KEY_MAP CORRIGIDO 🎯: A chave é o cabeçalho em minúsculas (sem o acento se possível) e o valor é a chave padronizada no JS.
+        // 🎯 KEY_MAP: Mapeia cabeçalhos com acentos ou variações para uma chave padronizada no JS.
         const KEY_MAP = {
-            'certidão de nascimento': 'CertidaoDeNascimento', 
-            'certidao de nascimento': 'CertidaoDeNascimento', 
-            'última vez nesta escola': 'UltimaVezNestaEscola',
-            'ultima vez nesta escola': 'UltimaVezNestaEscola',
+            'Certidão de Nascimento': 'CertidaoDeNascimento', 
+            'Última vez nesta Escola': 'UltimaVezNestaEscola'
         };
 
         // 🛠️ FUNÇÃO DE FORMATAÇÃO DE DATA 🛠️
@@ -214,6 +210,7 @@
             // Só tenta formatar se for um número de série válido (geralmente > 1000)
             if (typeof cellValue === 'number' && cellValue > 1000) {
                 
+                // Formata como ANO para UltimaVezNestaEscola
                 if (headerKey === 'UltimaVezNestaEscola') {
                     const formattedYear = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
                     // Limpa anos de erro de série (como 1900-1905)
@@ -221,6 +218,7 @@
                     return formattedYear;
                 }
                 
+                // Formata como DATA COMPLETA para Nascimento
                 if (headerKey === 'Nascimento') {
                     // Retorna a data completa
                     return XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
@@ -230,7 +228,7 @@
             return String(cellValue) || '';
         }
         
-        // 🛠️ FUNÇÃO DE LEITURA 🛠️
+        // 🛠️ FUNÇÃO DE LEITURA E CARREGAMENTO DO ARQUIVO 🛠️
         function handleFile(e) {
             const file = e.target.files[0];
             if (!file) {
@@ -240,41 +238,39 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
+                // Usa 'raw: true' para preservar formatos de número e data originais
                 const workbook = XLSX.read(data, { type: 'array' });
                 
                 fullData = {}; 
 
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    // Usa 'raw: true' para obter os valores numéricos de datas
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
 
                     const headers = jsonData[0];
                     const rows = jsonData.slice(1);
 
                     const mappedRows = rows.map(row => {
-                        let obj = { sheetName: sheetName, 'Caixa': '' };
+                        let obj = { sheetName: sheetName }; 
                         headers.forEach((header, index) => {
                             const cleanHeader = (header || '').trim();
                             const lowerHeader = cleanHeader.toLowerCase();
+                            let cellValue = row[index] !== undefined ? row[index] : '';
 
                             if (cleanHeader) {
+                                let key = cleanHeader;
                                 
-                                // 1. Mapeamento de Caixa
-                                if (lowerHeader.includes('caixa') || lowerHeader.includes('nº')) {
-                                    obj['Caixa'] = row[index] !== undefined ? row[index] : '';
+                                // 1. Aplica o mapeamento para padronização de chaves problemáticas
+                                if (KEY_MAP[lowerHeader]) {
+                                    key = KEY_MAP[lowerHeader];
                                 
-                                // 2. Mapeamento de Nascimento (que não está no KEY_MAP)
-                                } else if (cleanHeader === 'Nascimento') {
-                                    obj['Nascimento'] = row[index] !== undefined ? row[index] : '';
-                                
-                                // 3. 🎯 Mapeamento de Chaves Flexíveis 🎯
-                                } else if (KEY_MAP[lowerHeader]) {
-                                    obj[KEY_MAP[lowerHeader]] = row[index] !== undefined ? row[index] : '';
-                                
-                                // 4. Outras Chaves (Série/Ano, Filiação 1, Histórico, etc.)
-                                } else {
-                                    obj[cleanHeader] = row[index] !== undefined ? row[index] : '';
+                                // 2. Padroniza chaves de Caixa
+                                } else if (lowerHeader.includes('caixa') || lowerHeader.includes('nº na caixa')) {
+                                    key = 'Caixa'; 
                                 }
+                                
+                                obj[key] = cellValue;
                             }
                         });
                         return obj;
@@ -303,6 +299,11 @@
             const resultsDiv = document.getElementById('search-results');
             resultsDiv.innerHTML = '';
 
+            if (!fullData || Object.keys(fullData).length === 0) {
+                resultsDiv.innerHTML = `<p style="color: ${ERROR_COLOR};">Erro: Nenhuma planilha carregada.</p>`;
+                return;
+            }
+
             if (query.length < 2) {
                 resultsDiv.innerHTML = '<p>Digite pelo menos 2 caracteres para iniciar a busca.</p>';
                 return;
@@ -314,17 +315,33 @@
 
                 const sheetResults = sheetRows.filter(row => {
                     return Object.values(row).some(cellValue => {
-                        const valueString = String(cellValue).toLowerCase();
+                        // Converte a data de número de série para string formatada APENAS para a busca, se for um número de data
+                        let valueString = String(cellValue).toLowerCase();
+
+                        if (typeof cellValue === 'number' && cellValue > 1000) {
+                            // Tenta formatar a data como dd/mm/yyyy para incluir datas na busca
+                            const formattedDate = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
+                            valueString = formattedDate.toLowerCase();
+                        }
+                        
                         return valueString.includes(query);
                     });
                 });
                 
                 allResults = allResults.concat(sheetResults);
             }
+            
+            // ORDENAÇÃO: Ordenar por Aba (sheetName) e depois por Nº na Caixa (Caixa)
+            allResults.sort((a, b) => {
+                if (a.sheetName < b.sheetName) return -1;
+                if (a.sheetName > b.sheetName) return 1;
+                // Ordenação por Caixa (garante que números são tratados como números)
+                return (parseInt(a.Caixa) || 0) - (parseInt(b.Caixa) || 0);
+            });
 
             if (allResults.length > 0) {
                 
-                // Os keys aqui SÃO OS PADRONIZADOS no JavaScript.
+                // As chaves (keys) aqui SÃO AS PADRONIZADAS no JavaScript.
                 const displayHeaders = [
                     { key: 'sheetName', title: 'Aba (Letra)' },
                     { key: 'Caixa', title: 'Nº na Caixa' },
@@ -333,12 +350,12 @@
                     { key: 'Série/Ano', title: 'Série/Ano' },
                     { key: 'Modalidade', title: 'Modalidade' },
                     { key: 'Filiação 1', title: 'Filiação 1' },
-                    { key: 'UltimaVezNestaEscola', title: 'Última vez nesta Escola' }, // CHAVE PADRONIZADA
-                    { key: 'CertidaoDeNascimento', title: 'Certidão de Nascimento' }, // CHAVE PADRONIZADA
+                    { key: 'Última vez nesta Escola', title: 'Última vez nesta Escola' }, // CHAVE PADRONIZADA
+                    { key: 'Certidão de Nascimento', title: 'Certidão de Nascimento' }, // CHAVE PADRONIZADA
                     { key: 'Histórico', title: 'Histórico' }
                 ];
 
-                let tableHTML = `<p>Encontrados ${allResults.length} resultados:</p>`;
+                let tableHTML = `<p style="color: ${SUCCESS_COLOR};">Encontrados ${allResults.length} resultados:</p>`;
                 tableHTML += `<table class="data-table"><thead><tr>`;
                 
                 displayHeaders.forEach(h => tableHTML += `<th>${h.title}</th>`);
@@ -350,17 +367,14 @@
                     displayHeaders.forEach(header => {
                         let value = row[header.key];
                         
-                        // 1. Tratamento e Formatação de Datas
+                        // Aplica Formatação de Datas/Ano para exibição
                         if (header.key === 'Nascimento' || header.key === 'UltimaVezNestaEscola') {
                             value = formatCellValue(value, header.key);
                         } 
                         
-                        // 2. Correção de Fallback para Colunas
-                        else if (header.key === 'Caixa' && !value) {
-                            value = row['Nº na caixa'] || ''; 
-                        }
+                        // Para CertidaoDeNascimento e outros campos de texto, apenas exibe o valor cru.
                         
-                        tableHTML += `<td>${value}</td>`;
+                        tableHTML += `<td>${String(value) || ''}</td>`;
                     });
 
                     tableHTML += `</tr>`;
