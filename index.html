@@ -57,6 +57,16 @@
             background-color: #f8f9fa;
             box-shadow: var(--shadow-input);
         }
+        
+        #auto-load-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e3f2fd; /* Azul bem claro para indicar processo */
+            border-left: 5px solid var(--primary-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #333;
+        }
 
         label {
             display: block;
@@ -116,12 +126,10 @@
             font-weight: 600;
         }
 
-       .data-table { 
+        .data-table { 
             width: 100%; 
             border-collapse: collapse; 
             margin-top: 15px; 
-            /* REMOVIDO: table-layout: fixed; */
-            /* Isso permite que a tabela se ajuste ao conteúdo */
         }
         .data-table th, .data-table td { 
             border: 1px solid #e9ecef; 
@@ -129,14 +137,12 @@
             text-align: left; 
             font-size: 0.70rem;
             
-            /* NOVAS REGRAS PARA LARGURA E QUEBRA DE TEXTO */
-            width: auto; /* Permite que a largura se ajuste ao conteúdo */
-            max-width: 300px; /* Limita a largura máxima da coluna */
-            white-space: normal; /* Permite a quebra de linha (wrap) se o texto for muito longo */
-            word-wrap: break-word; /* Ajuda a quebrar palavras longas */
+            width: auto; 
+            max-width: 300px; 
+            white-space: normal; 
+            word-wrap: break-word; 
             
             overflow: hidden;
-            /* REMOVIDO: text-overflow: ellipsis; e white-space: nowrap; para permitir quebra */
         }
         .data-table th { 
             background-color: var(--primary-color);
@@ -144,7 +150,6 @@
             font-weight: 600;
             text-transform: uppercase;
         }
-        /* ... (restante do CSS permanece igual) ... */
         .data-table tr:nth-child(even) {
             background-color: #f8f9fa; 
         }
@@ -176,14 +181,17 @@
 
     </style>
 </head>
-<body>
+<body onload="attemptAutoLoad()">
 
     <div class="container">
         <h1>🔍 Arquivo Inativo - JOSÉ TEIXEIRA FIALHO</h1>
 
         <div id="input-container">
-            <label for="file-input">1. Selecione o arquivo XLSX (Esperado: **Planilha Editável/ARQUIVO INATIVO - VIGENTE.xlsx**):</label>
-            <input type="file" id="file-input" accept=".xlsx" onchange="handleFile(event)">
+            <div id="auto-load-message">
+                **Tentando carregar a planilha automaticamente** da URL do SharePoint...
+            </div>
+            <label for="file-input" id="file-label" style="display: none;">1. Selecione o arquivo XLSX para busca:</label>
+            <input type="file" id="file-input" accept=".xlsx" onchange="handleFileManual(event)" style="display: none;">
         </div>
 
         <div id="search-container" style="display: none;">
@@ -196,7 +204,7 @@
 
         <h2>Resultados da Busca:</h2>
         <div id="search-results">
-            <p>Aguardando a seleção do arquivo...</p>
+            <p>Aguardando o carregamento da planilha...</p>
         </div>
         
         
@@ -207,38 +215,110 @@
         const SUCCESS_COLOR = '#28a745';
         const ERROR_COLOR = '#dc3545';
         
+        // 🎯 NOVO CAMINHO: URL COMPLETA DO SHAREPOINT
+        const AUTO_LOAD_PATH = 'https://educadorseduesgov-my.sharepoint.com/:x:/r/personal/escolajoseteixeira_sedu_es_gov_br/Documents/SECRETARIA/ARQUIVO%20INATIVO%20-%20VIGENTE.xlsx?d=w7a96fe586b9f439683286d5a6ca940ef&csf=1&web=1&e=PJD9lJ';
+
         // 🎯 KEY_MAP: Mapeia cabeçalhos com acentos ou variações para uma chave padronizada no JS.
         const KEY_MAP = {
-            
-            'Última vez nesta Escola': 'UltimaVezNestaEscola',
+            'última vez nesta escola': 'UltimaVezNestaEscola', 
             'certidão de nascimento': 'CertidaoNascimento' 
         };
 
-        // 🛠️ FUNÇÃO DE FORMATAÇÃO DE DATA 🛠️
-        function formatCellValue(cellValue, headerKey) {
-            // Só tenta formatar se for um número de série válido (geralmente > 1000)
-            if (typeof cellValue === 'number' && cellValue > 1000) {
+        // ------------------------------------------
+        // FUNÇÕES DE UTILIDADE E CARREGAMENTO
+        // ------------------------------------------
+
+        // 🛠️ Função principal para processar o ArrayBuffer do XLSX
+        function processWorkbook(dataArrayBuffer, fileName) {
+            const workbook = XLSX.read(dataArrayBuffer, { type: 'array' });
+            fullData = {}; 
+
+            workbook.SheetNames.forEach(sheetName => {
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+
+                const headers = jsonData[0];
+                const rows = jsonData.slice(1);
+
+                const mappedRows = rows.map(row => {
+                    let obj = { sheetName: sheetName }; 
+                    headers.forEach((header, index) => {
+                        const cleanHeader = (header || '').trim();
+                        const lowerHeader = cleanHeader.toLowerCase();
+                        let cellValue = row[index] !== undefined ? row[index] : '';
+
+                        if (cleanHeader) {
+                            let key = cleanHeader;
+                            
+                            // 1. Aplica o mapeamento para padronização de chaves problemáticas
+                            if (KEY_MAP[lowerHeader]) {
+                                key = KEY_MAP[lowerHeader];
+                            
+                            // 2. Padroniza chaves de Caixa
+                            } else if (lowerHeader.includes('caixa') || lowerHeader.includes('nº na caixa')) {
+                                key = 'Caixa'; 
+                            } else if (lowerHeader.includes('certidão') || lowerHeader.includes('certidao')) {
+                                key = 'CertidaoNascimento';
+                            }
+                            
+                            obj[key] = cellValue;
+                        }
+                    });
+                    return obj;
+                }).filter(row => row['Nome'] && String(row['Nome']).trim() !== '');
+
+                fullData[sheetName] = mappedRows;
+            });
+
+            document.getElementById('search-container').style.display = 'block';
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-results').innerHTML = `<p style="color: ${SUCCESS_COLOR};">✅ Planilha carregada com sucesso! (${fileName.substring(0, 50)}...). Digite para buscar.</p>`;
+            document.getElementById('auto-load-message').style.display = 'none';
+        }
+
+
+        // 🔄 Lógica de Falha: Mostra o input de arquivo manual
+        function showManualInput(message) {
+            const autoLoadMsg = document.getElementById('auto-load-message');
+            autoLoadMsg.style.backgroundColor = '#fff3cd'; /* Amarelo claro para alerta */
+            autoLoadMsg.style.borderLeftColor = '#ffc107'; 
+            autoLoadMsg.innerHTML = `<p style="color: ${ERROR_COLOR}; font-weight: 600;">⚠️ Falha no Carregamento Automático da URL.</p>
+                                     <p style="margin-top: 5px;">${message}</p>`;
+
+            document.getElementById('file-label').style.display = 'block';
+            document.getElementById('file-input').style.display = 'block';
+            document.getElementById('search-results').innerHTML = '<p>Selecione o arquivo XLSX manualmente para iniciar.</p>';
+        }
+
+        // 1. 🌐 Tenta carregar o arquivo pelo caminho local (iniciado no <body> onload)
+        async function attemptAutoLoad() {
+            const autoLoadMsg = document.getElementById('auto-load-message');
+            autoLoadMsg.innerHTML = `**Tentando carregar a planilha automaticamente** da URL do SharePoint: 
+                                     <a href="${AUTO_LOAD_PATH}" target="_blank">Clique para tentar abrir a planilha no navegador</a>.`;
+            try {
+                // Ao carregar de uma URL externa, 'mode: "cors"' é a opção padrão 
+                // e é necessária para que o fetch funcione se o servidor SharePoint permitir.
+                const response = await fetch(AUTO_LOAD_PATH);
                 
-                // Formata como ANO para UltimaVezNestaEscola
-                if (headerKey === 'UltimaVezNestaEscola') {
-                    const formattedYear = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
-                    // Limpa anos de erro de série (como 1900-1905)
-                    if (parseInt(formattedYear) <= 1905) return ''; 
-                    return formattedYear;
+                if (!response.ok) {
+                    throw new Error(`Falha ao acessar o arquivo (${response.status} ${response.statusText}).`);
                 }
+
+                // Lê o conteúdo do arquivo como ArrayBuffer
+                const dataArrayBuffer = await response.arrayBuffer();
                 
-                // Formata como DATA COMPLETA para Nascimento
-                if (headerKey === 'Nascimento') {
-                    // Retorna a data completa
-                    return XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
-                }
+                // Processa o arquivo carregado automaticamente
+                processWorkbook(dataArrayBuffer, AUTO_LOAD_PATH);
+
+            } catch (error) {
+                // Se falhar (erro de rede, CORS, ou arquivo não encontrado)
+                console.error("Erro no carregamento automático:", error);
+                showManualInput(`Detalhe: ${error.message}. Isso pode ocorrer por restrições de segurança (CORS) ou se você não estiver logado no SharePoint. Por favor, localize o arquivo manualmente.`);
             }
-        
-            return String(cellValue) || '';
         }
         
-        // 🛠️ FUNÇÃO DE LEITURA E CARREGAMENTO DO ARQUIVO 🛠️
-        function handleFile(e) {
+        // 2. 📁 Carregamento manual de arquivo (quando o usuário usa o input)
+        function handleFileManual(e) {
             const file = e.target.files[0];
             if (!file) {
                 return;
@@ -246,66 +326,38 @@
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                // Usa 'raw: true' para preservar formatos de número e data originais
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                fullData = {}; 
-
-                workbook.SheetNames.forEach(sheetName => {
-                    const worksheet = workbook.Sheets[sheetName];
-                    // Usa 'raw: true' para obter os valores numéricos de datas
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
-
-                    const headers = jsonData[0];
-                    const rows = jsonData.slice(1);
-
-                    const mappedRows = rows.map(row => {
-                        let obj = { sheetName: sheetName }; 
-                        headers.forEach((header, index) => {
-                            const cleanHeader = (header || '').trim();
-                            const lowerHeader = cleanHeader.toLowerCase();
-                            let cellValue = row[index] !== undefined ? row[index] : '';
-
-                            if (cleanHeader) {
-                                let key = cleanHeader;
-                                
-                                // 1. Aplica o mapeamento para padronização de chaves problemáticas
-                                if (KEY_MAP[lowerHeader]) {
-                                    key = KEY_MAP[lowerHeader];
-                                
-                                // 2. Padroniza chaves de Caixa
-                                } else if (lowerHeader.includes('caixa') || lowerHeader.includes('nº na caixa')) {
-                                    key = 'Caixa'; 
-                                // 🎯 NOVO: Padroniza Certidão
-                                } else if (lowerHeader.includes('certidão') || lowerHeader.includes('certidao')) {
-                                    key = 'CertidaoNascimento';
-                                }
-                                
-                                obj[key] = cellValue;
-                            }
-                        });
-                        return obj;
-                    }).filter(row => row['Nome'] && String(row['Nome']).trim() !== '');
-
-                    fullData[sheetName] = mappedRows;
-                });
-
-                document.getElementById('search-container').style.display = 'block';
-                document.getElementById('search-input').value = '';
-                document.getElementById('search-results').innerHTML = `<p style="color: ${SUCCESS_COLOR};">✅ Planilha "${file.name}" carregada com sucesso! Digite para buscar.</p>`;
-
-                const openLink = document.getElementById('open-xlsx-link');
-                openLink.onclick = () => {
-                    alert(`O arquivo já está no seu computador. Abra o arquivo "${file.name}" diretamente do Explorador de Arquivos/Finder no caminho: Planilha Editável/ARQUIVO INATIVO - VIGENTE.xlsx`);
-                    return false;
-                };
+                const dataArrayBuffer = e.target.result;
+                processWorkbook(dataArrayBuffer, file.name);
+                document.getElementById('auto-load-message').style.display = 'none';
+                document.getElementById('file-label').style.display = 'none';
+                document.getElementById('file-input').style.display = 'none';
             };
 
             reader.readAsArrayBuffer(file);
         }
 
-        // FUNÇÃO DE BUSCA (USA CHAVES PADRONIZADAS)
+        // 🛠️ FUNÇÃO DE FORMATAÇÃO DE DATA 🛠️
+        function formatCellValue(cellValue, headerKey) {
+            if (typeof cellValue === 'number' && cellValue > 1000) {
+                
+                if (headerKey === 'UltimaVezNestaEscola') {
+                    const formattedYear = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
+                    if (parseInt(formattedYear) <= 1905) return ''; 
+                    return formattedYear;
+                }
+                
+                if (headerKey === 'Nascimento') {
+                    return XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
+                }
+            }
+        
+            return String(cellValue) || '';
+        }
+
+        // ------------------------------------------
+        // FUNÇÃO DE BUSCA (performSearch)
+        // ------------------------------------------
+
         function performSearch() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const resultsDiv = document.getElementById('search-results');
@@ -327,11 +379,9 @@
 
                 const sheetResults = sheetRows.filter(row => {
                     return Object.values(row).some(cellValue => {
-                        // Converte a data de número de série para string formatada APENAS para a busca, se for um número de data
                         let valueString = String(cellValue).toLowerCase();
 
                         if (typeof cellValue === 'number' && cellValue > 1000) {
-                            // Tenta formatar a data como dd/mm/yyyy para incluir datas na busca
                             const formattedDate = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
                             valueString = formattedDate.toLowerCase();
                         }
@@ -347,7 +397,6 @@
             allResults.sort((a, b) => {
                 if (a.sheetName < b.sheetName) return -1;
                 if (a.sheetName > b.sheetName) return 1;
-                // Ordenação por Caixa (garante que números são tratados como números)
                 return (parseInt(a.Caixa) || 0) - (parseInt(b.Caixa) || 0);
             });
 
@@ -359,12 +408,11 @@
                     { key: 'Caixa', title: 'Nº na Caixa' },
                     { key: 'Nome', title: 'Nome' },
                     { key: 'Nascimento', title: 'Nascimento' },
-                    // 🎯 NOVA COLUNA AQUI
                     { key: 'CertidaoNascimento', title: 'Certidão de Nascimento' }, 
                     { key: 'Série/Ano', title: 'Série/Ano' },
                     { key: 'Modalidade', title: 'Modalidade' },
                     { key: 'Filiação 1', title: 'Filiação 1' },
-                    { key: 'Última vez nesta Escola', title: 'Última vez nesta Escola' }, // CHAVE PADRONIZADA
+                    { key: 'UltimaVezNestaEscola', title: 'Última vez nesta Escola' }, 
                     { key: 'Histórico', title: 'Histórico' }
                 ];
 
@@ -380,12 +428,9 @@
                     displayHeaders.forEach(header => {
                         let value = row[header.key];
                         
-                        // Aplica Formatação de Datas/Ano para exibição
                         if (header.key === 'Nascimento' || header.key === 'UltimaVezNestaEscola') {
                             value = formatCellValue(value, header.key);
                         } 
-                        
-                        // Certidão de Nascimento é exibido como string.
                         
                         tableHTML += `<td>${String(value) || ''}</td>`;
                     });
