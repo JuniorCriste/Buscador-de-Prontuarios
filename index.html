@@ -8,7 +8,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
-        /* Estilos CSS (Mantidos) */
         :root {
             --primary-color: #007bff;
             --secondary-color: #6c757d;
@@ -24,7 +23,8 @@
             background-color: var(--background-light);
             padding: 20px; 
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
         }
 
         .container {
@@ -33,147 +33,54 @@
             padding: 30px;
             border-radius: 10px;
             box-shadow: var(--shadow-subtle);
+            margin-bottom: 30px;
         }
 
-        h1 {
-            color: var(--primary-color);
-            border-bottom: 3px solid var(--primary-color);
-            padding-bottom: 10px;
-            font-weight: 600;
-        }
-
-        h2 {
-            color: var(--secondary-color);
-            margin-top: 25px;
-            font-weight: 400;
-            font-size: 1.5rem;
-        }
-
-        #input-container, #search-container { 
+        h1 { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); padding-bottom: 10px; font-weight: 600; }
+        
+        #input-container, #search-container, #print-selection-container { 
             margin-bottom: 20px; 
             padding: 20px; 
             border: 1px solid #dee2e6;
             border-radius: 8px; 
             background-color: #f8f9fa;
-            box-shadow: var(--shadow-input);
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #343a40;
-        }
-
-        #file-input {
-            padding: 10px;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            background-color: white;
-        }
-
-        #search-input {
-            width: 100%;
-            max-width: 400px;
-            padding: 10px 15px;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        #search-input:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
-
-        #search-container p {
-            font-size: 0.85em; 
-            color: var(--secondary-color);
-            margin-top: 5px;
-        }
-
-        hr {
-            border: 0;
-            height: 1px;
-            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 123, 255, 0.75), rgba(0, 0, 0, 0));
-            margin: 30px 0;
-        }
-
-        #search-results { 
-            margin-top: 20px; 
-            border: 1px solid #dee2e6;
-            border-radius: 8px; 
-            padding: 15px; 
-            min-height: 100px;
-            background-color: white;
-            box-shadow: var(--shadow-input);
-        }
-        
-        #search-results p:first-child[style*="#28a745"] {
-            font-weight: 600;
-        }
-        #search-results p[style*="#dc3545"] {
-            font-weight: 600;
-        }
-
-       .data-table { 
+        .data-table { 
             width: 100%; 
             border-collapse: collapse; 
             margin-top: 15px; 
-            /* REMOVIDO: table-layout: fixed; */
-            /* Isso permite que a tabela se ajuste ao conteúdo */
         }
         .data-table th, .data-table td { 
             border: 1px solid #e9ecef; 
-            padding: 12px 15px; 
+            padding: 10px; 
             text-align: left; 
-            font-size: 0.70rem;
-            
-            /* NOVAS REGRAS PARA LARGURA E QUEBRA DE TEXTO */
-            width: auto; /* Permite que a largura se ajuste ao conteúdo */
-            max-width: 300px; /* Limita a largura máxima da coluna */
-            white-space: normal; /* Permite a quebra de linha (wrap) se o texto for muito longo */
-            word-wrap: break-word; /* Ajuda a quebrar palavras longas */
-            
-            overflow: hidden;
-            /* REMOVIDO: text-overflow: ellipsis; e white-space: nowrap; para permitir quebra */
+            font-size: 0.75rem;
+            word-wrap: break-word;
         }
-        .data-table th { 
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        /* ... (restante do CSS permanece igual) ... */
-        .data-table tr:nth-child(even) {
-            background-color: #f8f9fa; 
-        }
-        .data-table tr:hover {
-            background-color: #e2f0ff; 
-        }
+        .data-table th { background-color: var(--primary-color); color: white; }
+        .data-table tr:nth-child(even) { background-color: #f8f9fa; }
+
+        /* Estilos dos Botões */
+        .btn-add { background-color: var(--success-color); color: white; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; border: none; }
+        .btn-remove { background-color: var(--error-color); color: white; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; border: none; }
+        .btn-print { background-color: #343a40; color: white; padding: 12px 25px; font-size: 1rem; margin-top: 20px; cursor: pointer; border: none; border-radius: 5px; }
         
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.3s, transform 0.1s;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        button:active {
-            transform: scale(0.98);
-        }
+        button:hover { opacity: 0.8; }
 
-        #open-xlsx-link {
-            text-decoration: none;
+        /* Configuração para Impressão */
+        @media print {
+            .container, #search-container, #input-container, .btn-add, .btn-remove, .btn-print, h2 {
+                display: none !important;
+            }
+            #print-selection-container {
+                display: block !important;
+                width: 100%;
+                border: none;
+                background: white;
+            }
+            .data-table th { background-color: #eee !important; color: black; }
         }
-
     </style>
 </head>
 <body>
@@ -181,14 +88,13 @@
     <div class="container">
         <h1>🔍 Arquivo Inativo - JOSÉ TEIXEIRA FIALHO</h1>
         <div id="input-container">
-            <label for="file-input">1. Selecione o arquivo XLSX para busca de documentação em prontuários (Esperado: ARQUIVO INATIVO.xlsx):</label>
+            <label>1. Selecione o arquivo XLSX:</label>
             <input type="file" id="file-input" accept=".xlsx" onchange="handleFile(event)">
         </div>
 
         <div id="search-container" style="display: none;">
-            <label for="search-input">2. Digite o que deseja buscar (Nome, Filiação, etc.):</label>
+            <label>2. Digite para buscar:</label>
             <input type="text" id="search-input" placeholder="Ex: Maria da Silva" onkeyup="performSearch()">
-            <p>O campo busca em todas as abas (A-Z) simultaneamente.</p>
         </div>
 
         <hr>
@@ -197,206 +103,134 @@
         <div id="search-results">
             <p>Aguardando a seleção do arquivo...</p>
         </div>
-        
-        
+    </div>
+
+    <div id="print-selection-container" class="container" style="display: none;">
+        <h2>📋 Lista para Impressão</h2>
+        <div id="print-list-content">
+            </div>
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir Selecionados</button>
     </div>
 
     <script>
         let fullData = {}; 
-        const SUCCESS_COLOR = '#28a745';
-        const ERROR_COLOR = '#dc3545';
-        
-        // 🎯 KEY_MAP: Mapeia cabeçalhos com acentos ou variações para uma chave padronizada no JS.
+        let printList = []; // Lista de itens para imprimir
+
         const KEY_MAP = {
-            
-            'Última vez nesta Escola': 'UltimaVezNestaEscola',
+            'última vez nesta escola': 'UltimaVezNestaEscola',
             'certidão de nascimento': 'CertidaoNascimento' 
         };
 
-        // 🛠️ FUNÇÃO DE FORMATAÇÃO DE DATA 🛠️
         function formatCellValue(cellValue, headerKey) {
-            // Só tenta formatar se for um número de série válido (geralmente > 1000)
             if (typeof cellValue === 'number' && cellValue > 1000) {
-                
-                // Formata como ANO para UltimaVezNestaEscola
                 if (headerKey === 'UltimaVezNestaEscola') {
-                    const formattedYear = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
-                    // Limpa anos de erro de série (como 1900-1905)
-                    if (parseInt(formattedYear) <= 1905) return ''; 
-                    return formattedYear;
+                    const year = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
+                    return parseInt(year) <= 1905 ? '' : year;
                 }
-                
-                // Formata como DATA COMPLETA para Nascimento
                 if (headerKey === 'Nascimento') {
-                    // Retorna a data completa
                     return XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
                 }
             }
-        
-            return String(cellValue) || '';
+            return cellValue ? String(cellValue) : '';
         }
-        
-        // 🛠️ FUNÇÃO DE LEITURA E CARREGAMENTO DO ARQUIVO 🛠️
+
         function handleFile(e) {
             const file = e.target.files[0];
-            if (!file) {
-                return;
-            }
-
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
-                // Usa 'raw: true' para preservar formatos de número e data originais
                 const workbook = XLSX.read(data, { type: 'array' });
-                
                 fullData = {}; 
-
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
-                    // Usa 'raw: true' para obter os valores numéricos de datas
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
-
                     const headers = jsonData[0];
                     const rows = jsonData.slice(1);
-
-                    const mappedRows = rows.map(row => {
-                        let obj = { sheetName: sheetName }; 
-                        headers.forEach((header, index) => {
-                            const cleanHeader = (header || '').trim();
-                            const lowerHeader = cleanHeader.toLowerCase();
-                            let cellValue = row[index] !== undefined ? row[index] : '';
-
-                            if (cleanHeader) {
-                                let key = cleanHeader;
-                                
-                                // 1. Aplica o mapeamento para padronização de chaves problemáticas
-                                if (KEY_MAP[lowerHeader]) {
-                                    key = KEY_MAP[lowerHeader];
-                                
-                                // 2. Padroniza chaves de Caixa
-                                } else if (lowerHeader.includes('caixa') || lowerHeader.includes('nº na caixa')) {
-                                    key = 'Caixa'; 
-                                // 🎯 NOVO: Padroniza Certidão
-                                } else if (lowerHeader.includes('certidão') || lowerHeader.includes('certidao')) {
-                                    key = 'CertidaoNascimento';
-                                }
-                                
-                                obj[key] = cellValue;
-                            }
+                    fullData[sheetName] = rows.map(row => {
+                        let obj = { sheetName: sheetName };
+                        headers.forEach((h, i) => {
+                            const cleanH = (h || '').trim();
+                            const key = KEY_MAP[cleanH.toLowerCase()] || cleanH;
+                            obj[key] = row[i];
                         });
                         return obj;
-                    }).filter(row => row['Nome'] && String(row['Nome']).trim() !== '');
-
-                    fullData[sheetName] = mappedRows;
+                    }).filter(r => r['Nome']);
                 });
-
                 document.getElementById('search-container').style.display = 'block';
-                document.getElementById('search-input').value = '';
-                document.getElementById('search-results').innerHTML = `<p style="color: ${SUCCESS_COLOR};">✅ Planilha "${file.name}" carregada com sucesso! Digite para buscar.</p>`;
-
-                const openLink = document.getElementById('open-xlsx-link');
-                openLink.onclick = () => {
-                    alert(`O arquivo já está no seu computador. Abra o arquivo "${file.name}" diretamente do Explorador de Arquivos/Finder no caminho: Planilha Editável/ARQUIVO INATIVO - VIGENTE.xlsx`);
-                    return false;
-                };
+                document.getElementById('search-results').innerHTML = `<p style="color: green;">✅ Arquivo carregado!</p>`;
             };
-
             reader.readAsArrayBuffer(file);
         }
 
-        // FUNÇÃO DE BUSCA (USA CHAVES PADRONIZADAS)
         function performSearch() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const resultsDiv = document.getElementById('search-results');
-            resultsDiv.innerHTML = '';
-
-            if (!fullData || Object.keys(fullData).length === 0) {
-                resultsDiv.innerHTML = `<p style="color: ${ERROR_COLOR};">Erro: Nenhuma planilha carregada.</p>`;
-                return;
-            }
-
-            if (query.length < 2) {
-                resultsDiv.innerHTML = '<p>Digite pelo menos 2 caracteres para iniciar a busca.</p>';
-                return;
-            }
+            if (query.length < 2) { resultsDiv.innerHTML = '<p>Digite pelo menos 2 caracteres...</p>'; return; }
 
             let allResults = [];
-            for (const sheetName in fullData) {
-                const sheetRows = fullData[sheetName];
+            for (const sheet in fullData) {
+                const matches = fullData[sheet].filter(row => 
+                    Object.values(row).some(val => String(val).toLowerCase().includes(query))
+                );
+                allResults = allResults.concat(matches);
+            }
 
-                const sheetResults = sheetRows.filter(row => {
-                    return Object.values(row).some(cellValue => {
-                        // Converte a data de número de série para string formatada APENAS para a busca, se for um número de data
-                        let valueString = String(cellValue).toLowerCase();
+            renderTable(allResults, 'search-results', true);
+        }
 
-                        if (typeof cellValue === 'number' && cellValue > 1000) {
-                            // Tenta formatar a data como dd/mm/yyyy para incluir datas na busca
-                            const formattedDate = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
-                            valueString = formattedDate.toLowerCase();
-                        }
-                        
-                        return valueString.includes(query);
-                    });
+        // Função Genérica para renderizar tabelas
+        function renderTable(data, targetId, isSearchTable) {
+            const headers = [
+                { key: 'sheetName', title: 'Aba' },
+                { key: 'Nome', title: 'Nome' },
+                { key: 'Nascimento', title: 'Nascimento' },
+                { key: 'Caixa', title: 'Caixa' }
+            ];
+
+            let html = `<table class="data-table"><thead><tr>`;
+            headers.forEach(h => html += `<th>${h.title}</th>`);
+            html += `<th>Ação</th></tr></thead><tbody>`;
+
+            data.forEach((row, index) => {
+                html += `<tr>`;
+                headers.forEach(h => {
+                    let val = row[h.key];
+                    if (h.key === 'Nascimento') val = formatCellValue(val, 'Nascimento');
+                    html += `<td>${val || ''}</td>`;
                 });
                 
-                allResults = allResults.concat(sheetResults);
-            }
-            
-            // ORDENAÇÃO: Ordenar por Aba (sheetName) e depois por Nº na Caixa (Caixa)
-            allResults.sort((a, b) => {
-                if (a.sheetName < b.sheetName) return -1;
-                if (a.sheetName > b.sheetName) return 1;
-                // Ordenação por Caixa (garante que números são tratados como números)
-                return (parseInt(a.Caixa) || 0) - (parseInt(b.Caixa) || 0);
+                if (isSearchTable) {
+                    html += `<td><button class="btn-add" onclick='addToPrint(${JSON.stringify(row).replace(/'/g, "&apos;")})'>Adicionar</button></td>`;
+                } else {
+                    html += `<td><button class="btn-remove" onclick="removeFromPrint(${index})">Remover</button></td>`;
+                }
+                html += `</tr>`;
             });
 
-            if (allResults.length > 0) {
-                
-                // As chaves (keys) aqui SÃO AS PADRONIZADAS no JavaScript.
-                const displayHeaders = [
-                    { key: 'sheetName', title: 'Aba (Letra)' },
-                    { key: 'Caixa', title: 'Nº na Caixa' },
-                    { key: 'Nome', title: 'Nome' },
-                    { key: 'Nascimento', title: 'Nascimento' },
-                    // 🎯 NOVA COLUNA AQUI
-                    { key: 'CertidaoNascimento', title: 'Certidão de Nascimento' }, 
-                    { key: 'Série/Ano', title: 'Série/Ano' },
-                    { key: 'Modalidade', title: 'Modalidade' },
-                    { key: 'Filiação 1', title: 'Filiação 1' },
-                    { key: 'Última vez nesta Escola', title: 'Última vez nesta Escola' }, // CHAVE PADRONIZADA
-                    { key: 'Histórico', title: 'Histórico' }
-                ];
+            html += `</tbody></table>`;
+            document.getElementById(isSearchTable ? targetId : 'print-list-content').innerHTML = html;
+        }
 
-                let tableHTML = `<p style="color: ${SUCCESS_COLOR};">Encontrados ${allResults.length} resultados:</p>`;
-                tableHTML += `<table class="data-table"><thead><tr>`;
-                
-                displayHeaders.forEach(h => tableHTML += `<th>${h.title}</th>`);
-                tableHTML += `</tr></thead><tbody>`;
+        // Adicionar à lista de impressão
+        function addToPrint(rowData) {
+            printList.push(rowData);
+            updatePrintArea();
+        }
 
-                allResults.forEach(row => {
-                    tableHTML += `<tr>`;
-                    
-                    displayHeaders.forEach(header => {
-                        let value = row[header.key];
-                        
-                        // Aplica Formatação de Datas/Ano para exibição
-                        if (header.key === 'Nascimento' || header.key === 'UltimaVezNestaEscola') {
-                            value = formatCellValue(value, header.key);
-                        } 
-                        
-                        // Certidão de Nascimento é exibido como string.
-                        
-                        tableHTML += `<td>${String(value) || ''}</td>`;
-                    });
+        // Remover da lista de impressão
+        function removeFromPrint(index) {
+            printList.splice(index, 1);
+            updatePrintArea();
+        }
 
-                    tableHTML += `</tr>`;
-                });
-                
-                tableHTML += `</tbody></table>`;
-                resultsDiv.innerHTML = tableHTML;
-
+        function updatePrintArea() {
+            const container = document.getElementById('print-selection-container');
+            if (printList.length > 0) {
+                container.style.display = 'block';
+                renderTable(printList, 'print-list-content', false);
             } else {
-                resultsDiv.innerHTML = `<p style="color: ${ERROR_COLOR};">Nenhum resultado encontrado para "${query}" nas abas.</p>`;
+                container.style.display = 'none';
             }
         }
     </script>
