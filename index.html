@@ -132,21 +132,31 @@
             { key: 'Série/Ano', title: 'Série/Ano' },
             { key: 'Modalidade', title: 'Modalidade' },
             { key: 'Filiação 1', title: 'Filiação 1' },
-            { key: 'UltimaVezNestaEscola', title: 'Última Vez' },
+            { key: 'Última vez nesta Escola', title: 'Última vez nesta Escola' },
             { key: 'Histórico', title: 'Histórico' }
         ];
 
+        // 🛠️ FUNÇÃO DE FORMATAÇÃO DE DATA 🛠️
         function formatCellValue(cellValue, headerKey) {
+            // Só tenta formatar se for um número de série válido (geralmente > 1000)
             if (typeof cellValue === 'number' && cellValue > 1000) {
+                
+                // Formata como ANO para UltimaVezNestaEscola
                 if (headerKey === 'UltimaVezNestaEscola') {
-                    const year = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
-                    return parseInt(year) <= 1905 ? '' : year;
+                    const formattedYear = XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'yyyy' });
+                    // Limpa anos de erro de série (como 1900-1905)
+                    if (parseInt(formattedYear) <= 1905) return ''; 
+                    return formattedYear;
                 }
+                
+                // Formata como DATA COMPLETA para Nascimento
                 if (headerKey === 'Nascimento') {
+                    // Retorna a data completa
                     return XLSX.utils.format_cell({ t: 'n', v: cellValue, z: 'dd/mm/yyyy' });
                 }
             }
-            return cellValue ? String(cellValue) : '';
+        
+            return String(cellValue) || '';
         }
 
         function handleFile(e) {
@@ -249,4 +259,5 @@
     </script>
 </body>
 </html>
+
 
