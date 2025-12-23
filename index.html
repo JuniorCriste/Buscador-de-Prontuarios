@@ -14,8 +14,6 @@
             --success-color: #28a745;
             --error-color: #dc3545;
             --background-light: whitesmoke;
-            --shadow-subtle: 0 4px 8px rgba(0, 0, 0, 0.1);
-            --shadow-input: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         body { 
@@ -28,19 +26,19 @@
         }
 
         .container {
-            width: 90%;
+            width: 95%;
             background-color: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 10px;
-            box-shadow: var(--shadow-subtle);
-            margin-bottom: 30px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
 
-        h1 { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); padding-bottom: 10px; font-weight: 600; }
+        h1 { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); padding-bottom: 10px; }
         
-        #input-container, #search-container, #print-selection-container { 
+        #input-container, #search-container, #print-area-container { 
             margin-bottom: 20px; 
-            padding: 20px; 
+            padding: 15px; 
             border: 1px solid #dee2e6;
             border-radius: 8px; 
             background-color: #f8f9fa;
@@ -53,33 +51,37 @@
         }
         .data-table th, .data-table td { 
             border: 1px solid #e9ecef; 
-            padding: 10px; 
+            padding: 8px; 
             text-align: left; 
-            font-size: 0.75rem;
+            font-size: 0.70rem; /* Fonte pequena para caber todas as colunas */
             word-wrap: break-word;
         }
-        .data-table th { background-color: var(--primary-color); color: white; }
+        .data-table th { background-color: var(--primary-color); color: white; text-transform: uppercase; }
         .data-table tr:nth-child(even) { background-color: #f8f9fa; }
 
-        /* Estilos dos Botões */
-        .btn-add { background-color: var(--success-color); color: white; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; border: none; }
-        .btn-remove { background-color: var(--error-color); color: white; padding: 5px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; border: none; }
-        .btn-print { background-color: #343a40; color: white; padding: 12px 25px; font-size: 1rem; margin-top: 20px; cursor: pointer; border: none; border-radius: 5px; }
+        .btn-add { background-color: var(--success-color); color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.65rem; }
+        .btn-remove { background-color: var(--error-color); color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 0.65rem; }
+        .btn-print { background-color: #343a40; color: white; padding: 12px 25px; font-size: 1rem; cursor: pointer; border: none; border-radius: 5px; margin-top: 15px; }
         
         button:hover { opacity: 0.8; }
 
-        /* Configuração para Impressão */
+        /* CONFIGURAÇÃO DE IMPRESSÃO */
         @media print {
-            .container, #search-container, #input-container, .btn-add, .btn-remove, .btn-print, h2 {
+            body { background-color: white; padding: 0; }
+            .container, #search-container, #input-container, .btn-add, .btn-remove, .btn-print, h2, hr {
                 display: none !important;
             }
-            #print-selection-container {
+            #print-area-container {
                 display: block !important;
                 width: 100%;
                 border: none;
                 background: white;
+                padding: 0;
             }
-            .data-table th { background-color: #eee !important; color: black; }
+            .data-table { width: 100%; }
+            .data-table th { background-color: #f0f0f0 !important; color: black !important; }
+            /* Esconde a coluna de Ação na impressão */
+            .col-acao { display: none !important; }
         }
     </style>
 </head>
@@ -88,38 +90,51 @@
     <div class="container">
         <h1>🔍 Arquivo Inativo - JOSÉ TEIXEIRA FIALHO</h1>
         <div id="input-container">
-            <label>1. Selecione o arquivo XLSX:</label>
+            <label>1. Selecione o arquivo XLSX:</label><br>
             <input type="file" id="file-input" accept=".xlsx" onchange="handleFile(event)">
         </div>
 
         <div id="search-container" style="display: none;">
-            <label>2. Digite para buscar:</label>
-            <input type="text" id="search-input" placeholder="Ex: Maria da Silva" onkeyup="performSearch()">
+            <label>2. Digite o que deseja buscar:</label>
+            <input type="text" id="search-input" style="width: 100%; padding: 10px;" placeholder="Nome, filiação, etc..." onkeyup="performSearch()">
         </div>
 
         <hr>
 
         <h2>Resultados da Busca:</h2>
         <div id="search-results">
-            <p>Aguardando a seleção do arquivo...</p>
+            <p>Aguardando arquivo...</p>
         </div>
     </div>
 
-    <div id="print-selection-container" class="container" style="display: none;">
+    <div id="print-area-container" class="container" style="display: none;">
         <h2>📋 Lista para Impressão</h2>
-        <div id="print-list-content">
-            </div>
-        <button class="btn-print" onclick="window.print()">🖨️ Imprimir Selecionados</button>
+        <div id="print-list-content"></div>
+        <button class="btn-print" onclick="window.print()">🖨️ Gerar Impressão</button>
     </div>
 
     <script>
         let fullData = {}; 
-        let printList = []; // Lista de itens para imprimir
+        let printList = [];
 
         const KEY_MAP = {
             'última vez nesta escola': 'UltimaVezNestaEscola',
-            'certidão de nascimento': 'CertidaoNascimento' 
+            'certidão de nascimento': 'CertidaoNascimento'
         };
+
+        // Definição de todas as colunas que você tinha originalmente
+        const DISPLAY_HEADERS = [
+            { key: 'sheetName', title: 'Aba' },
+            { key: 'Caixa', title: 'Caixa' },
+            { key: 'Nome', title: 'Nome' },
+            { key: 'Nascimento', title: 'Nascimento' },
+            { key: 'CertidaoNascimento', title: 'Certidão' }, 
+            { key: 'Série/Ano', title: 'Série/Ano' },
+            { key: 'Modalidade', title: 'Modalidade' },
+            { key: 'Filiação 1', title: 'Filiação 1' },
+            { key: 'UltimaVezNestaEscola', title: 'Última Vez' },
+            { key: 'Histórico', title: 'Histórico' }
+        ];
 
         function formatCellValue(cellValue, headerKey) {
             if (typeof cellValue === 'number' && cellValue > 1000) {
@@ -145,20 +160,24 @@
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
-                    const headers = jsonData[0];
+                    const headers = jsonData[0] || [];
                     const rows = jsonData.slice(1);
                     fullData[sheetName] = rows.map(row => {
                         let obj = { sheetName: sheetName };
                         headers.forEach((h, i) => {
                             const cleanH = (h || '').trim();
-                            const key = KEY_MAP[cleanH.toLowerCase()] || cleanH;
+                            const lowerH = cleanH.toLowerCase();
+                            let key = cleanH;
+                            if (KEY_MAP[lowerH]) key = KEY_MAP[lowerH];
+                            else if (lowerH.includes('caixa')) key = 'Caixa';
+                            else if (lowerH.includes('certid')) key = 'CertidaoNascimento';
                             obj[key] = row[i];
                         });
                         return obj;
                     }).filter(r => r['Nome']);
                 });
                 document.getElementById('search-container').style.display = 'block';
-                document.getElementById('search-results').innerHTML = `<p style="color: green;">✅ Arquivo carregado!</p>`;
+                document.getElementById('search-results').innerHTML = '<p style="color:green">✅ Planilha carregada!</p>';
             };
             reader.readAsArrayBuffer(file);
         }
@@ -175,57 +194,51 @@
                 );
                 allResults = allResults.concat(matches);
             }
-
             renderTable(allResults, 'search-results', true);
         }
 
-        // Função Genérica para renderizar tabelas
-        function renderTable(data, targetId, isSearchTable) {
-            const headers = [
-                { key: 'sheetName', title: 'Aba' },
-                { key: 'Nome', title: 'Nome' },
-                { key: 'Nascimento', title: 'Nascimento' },
-                { key: 'Caixa', title: 'Caixa' }
-            ];
-
+        function renderTable(data, targetId, isSearch) {
             let html = `<table class="data-table"><thead><tr>`;
-            headers.forEach(h => html += `<th>${h.title}</th>`);
-            html += `<th>Ação</th></tr></thead><tbody>`;
+            DISPLAY_HEADERS.forEach(h => html += `<th>${h.title}</th>`);
+            html += `<th class="col-acao">Ação</th></tr></thead><tbody>`;
 
             data.forEach((row, index) => {
                 html += `<tr>`;
-                headers.forEach(h => {
+                DISPLAY_HEADERS.forEach(h => {
                     let val = row[h.key];
-                    if (h.key === 'Nascimento') val = formatCellValue(val, 'Nascimento');
+                    if (h.key === 'Nascimento' || h.key === 'UltimaVezNestaEscola') {
+                        val = formatCellValue(val, h.key);
+                    }
                     html += `<td>${val || ''}</td>`;
                 });
                 
-                if (isSearchTable) {
-                    html += `<td><button class="btn-add" onclick='addToPrint(${JSON.stringify(row).replace(/'/g, "&apos;")})'>Adicionar</button></td>`;
+                if (isSearch) {
+                    // Botão Adicionar
+                    const rowJson = JSON.stringify(row).replace(/'/g, "&apos;");
+                    html += `<td class="col-acao"><button class="btn-add" onclick='addToPrint(${rowJson})'>Adicionar</button></td>`;
                 } else {
-                    html += `<td><button class="btn-remove" onclick="removeFromPrint(${index})">Remover</button></td>`;
+                    // Botão Remover
+                    html += `<td class="col-acao"><button class="btn-remove" onclick="removeFromPrint(${index})">Remover</button></td>`;
                 }
                 html += `</tr>`;
             });
 
             html += `</tbody></table>`;
-            document.getElementById(isSearchTable ? targetId : 'print-list-content').innerHTML = html;
+            document.getElementById(isSearch ? targetId : 'print-list-content').innerHTML = html;
         }
 
-        // Adicionar à lista de impressão
         function addToPrint(rowData) {
             printList.push(rowData);
             updatePrintArea();
         }
 
-        // Remover da lista de impressão
         function removeFromPrint(index) {
             printList.splice(index, 1);
             updatePrintArea();
         }
 
         function updatePrintArea() {
-            const container = document.getElementById('print-selection-container');
+            const container = document.getElementById('print-area-container');
             if (printList.length > 0) {
                 container.style.display = 'block';
                 renderTable(printList, 'print-list-content', false);
